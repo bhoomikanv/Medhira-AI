@@ -1,0 +1,9 @@
+{
+  "name": "medhira-ai",
+  "version": "1.0.0",
+  "description": "Medhira AI — an intelligent chat companion powered by Claude.",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  }
+}

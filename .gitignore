@@ -1,0 +1,15 @@
+# Environment variables / secrets
+.env
+.env.local
+.env.*.local
+
+# Netlify
+.netlify/
+
+# Dependencies (if any are ever added)
+node_modules/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/

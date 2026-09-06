@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Medhira AI — Your Intelligent AI Companion</title>
+<meta name="description" content="Medhira AI, an intelligent chat companion powered by Claude." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%22%23A78BFA%22/></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app" data-theme="system">
+
+  <!-- Mobile top bar -->
+  <header class="mobile-bar">
+    <button class="icon-btn" id="menuToggle" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="mobile-brand">
+      <span class="mark" aria-hidden="true"></span>
+      <span>Medhira AI</span>
+    </div>
+    <button class="icon-btn" id="mobileNewChat" aria-label="Start new chat">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </header>
+
+  <div class="scrim" id="scrim" hidden></div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar" aria-label="Chat navigation">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <div class="brand-text">
+        <span class="brand-name">Medhira AI</span>
+        <span class="brand-tag">Your intelligent AI companion</span>
+      </div>
+    </div>
+
+    <button class="new-chat-btn" id="newChatBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New chat
+    </button>
+
+    <nav class="history" aria-label="Chat history">
+      <h2 class="history-heading">History</h2>
+      <ul class="history-list" id="historyList"><!-- injected --></ul>
+      <p class="history-empty" id="historyEmpty">Your conversations will appear here.</p>
+    </nav>
+
+    <button class="settings-btn" id="settingsBtn">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="chat-scroll" id="chatScroll">
+      <div class="empty-state" id="emptyState">
+        <span class="empty-mark" aria-hidden="true"></span>
+        <h1>What would you like to explore?</h1>
+        <p>Ask anything — Medhira thinks it through with you.</p>
+        <div class="suggestions">
+          <button class="suggestion-card" data-prompt="Explain a difficult topic to me in simple terms.">
+            <strong>Explain a difficult topic</strong>
+            <span>Break down something complex, simply</span>
+          </button>
+          <button class="suggestion-card" data-prompt="Help me study for an exam. Ask me guiding questions.">
+            <strong>Help me study</strong>
+            <span>Quiz me, summarize, and review</span>
+          </button>
+          <button class="suggestion-card" data-prompt="Write something for me — I'll tell you what.">
+            <strong>Write something for me</strong>
+            <span>Essays, emails, notes, and more</span>
+          </button>
+          <button class="suggestion-card" data-prompt="Help me understand this piece of code.">
+            <strong>Help me understand code</strong>
+            <span>Walk through logic, line by line</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="messages" id="messages" role="log" aria-live="polite"></div>
+    </div>
+
+    <form class="composer" id="composerForm">
+      <div class="composer-inner">
+        <label for="messageInput" class="sr-only">Message Medhira</label>
+        <textarea
+          id="messageInput"
+          rows="1"
+          placeholder="Message Medhira..."
+          aria-label="Message Medhira"
+        ></textarea>
+        <button type="submit" class="send-btn" id="sendBtn" aria-label="Send message">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+      <p class="composer-hint">Enter to send · Shift + Enter for a new line</p>
+    </form>
+  </main>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsOverlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-header">
+      <h2 id="settingsTitle">Settings</h2>
+      <button class="icon-btn" id="closeSettings" aria-label="Close settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <section class="settings-section">
+        <h3>Theme</h3>
+        <div class="segmented" id="themeSegmented" role="radiogroup" aria-label="Theme">
+          <button type="button" role="radio" data-value="light">Light</button>
+          <button type="button" role="radio" data-value="dark">Dark</button>
+          <button type="button" role="radio" data-value="system">System</button>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h3>AI personality</h3>
+        <div class="radio-list" id="personalityList" role="radiogroup" aria-label="AI personality">
+          <label class="radio-row">
+            <input type="radio" name="personality" value="helpful" checked>
+            <span>Helpful — balanced and to the point</span>
+          </label>
+          <label class="radio-row">
+            <input type="radio" name="personality" value="friendly">
+            <span>Friendly — warm and conversational</span>
+          </label>
+          <label class="radio-row">
+            <input type="radio" name="personality" value="professional">
+            <span>Professional — formal and precise</span>
+          </label>
+          <label class="radio-row">
+            <input type="radio" name="personality" value="teacher">
+            <span>Teacher — patient, step-by-step</span>
+          </label>
+          <label class="radio-row">
+            <input type="radio" name="personality" value="creative">
+            <span>Creative — imaginative and expressive</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h3>Custom instructions</h3>
+        <label for="customInstructions" class="field-label">Tell Medhira how you'd like it to respond</label>
+        <textarea id="customInstructions" rows="3" placeholder="e.g. Explain difficult topics in simple language."></textarea>
+      </section>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancelSettings">Cancel</button>
+      <button class="btn-primary" id="saveSettings">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm New Chat Modal -->
+<div class="modal-overlay" id="confirmOverlay" hidden>
+  <div class="modal modal-small" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="modal-body">
+      <h2 id="confirmTitle">Start a new chat?</h2>
+      <p>This conversation will be saved to your history. Starting a new chat won't delete it.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancelNewChat">Cancel</button>
+      <button class="btn-primary" id="confirmNewChat">Start new chat</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="assertive" hidden></div>
+
+<script src="script.js"></script>
+</body>
+</html>
