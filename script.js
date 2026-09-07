@@ -105,12 +105,14 @@
 
   /* ---------- Theme ---------- */
   function applyTheme() {
-    const root = document.querySelector(".app");
     let effective = settings.theme;
     if (effective === "system") {
       effective = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     }
-    root.setAttribute("data-theme", effective);
+    // Set on <html> (not just .app) so it's already applied pre-paint
+    // by the inline script in index.html, and cascades everywhere,
+    // including native form control styling via `color-scheme`.
+    document.documentElement.setAttribute("data-theme", effective);
   }
 
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
@@ -181,15 +183,22 @@
     conversations.forEach((c) => {
       const li = document.createElement("li");
       li.className = "history-item" + (c.id === currentConversationId ? " active" : "");
-      li.setAttribute("role", "button");
-      li.tabIndex = 0;
 
+      // A real <button> for opening the conversation — avoids nesting
+      // interactive elements inside a role="button" li, which breaks
+      // screen reader and keyboard behavior.
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "history-open";
+      open.setAttribute("aria-current", c.id === currentConversationId ? "true" : "false");
       const title = document.createElement("span");
       title.className = "history-item-title";
       title.textContent = c.title || "New chat";
-      li.appendChild(title);
+      open.appendChild(title);
+      open.addEventListener("click", () => selectConversation(c.id));
 
       const del = document.createElement("button");
+      del.type = "button";
       del.className = "history-delete";
       del.setAttribute("aria-label", `Delete conversation: ${c.title || "New chat"}`);
       del.innerHTML =
@@ -198,14 +207,9 @@
         e.stopPropagation();
         deleteConversation(c.id);
       });
+
+      li.appendChild(open);
       li.appendChild(del);
-
-      const open = () => selectConversation(c.id);
-      li.addEventListener("click", open);
-      li.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
-      });
-
       els.historyList.appendChild(li);
     });
   }
@@ -250,10 +254,17 @@
     return paragraphs;
   }
 
+  // Message roles follow the Claude API convention ("user" / "assistant"),
+  // but the stylesheet's visual classes are "user" / "ai" — map between them
+  // here rather than renaming roles everywhere they're stored and sent.
+  function roleToClass(role) {
+    return role === "assistant" ? "ai" : role;
+  }
+
   function appendMessageEl(role, text, { asError = false } = {}) {
     els.emptyState.hidden = true;
     const row = document.createElement("div");
-    row.className = `msg ${role}`;
+    row.className = `msg ${roleToClass(role)}`;
 
     const avatar = document.createElement("div");
     avatar.className = "msg-avatar";
@@ -295,6 +306,21 @@
 
   /* ---------- Typing / reveal animation for AI response ---------- */
   function revealText(bubbleEl, fullText) {
+    // Code blocks look broken mid-reveal (unclosed ``` fence), so for
+    // messages containing one, fade the complete answer in instead.
+    if (fullText.includes("```")) {
+      return new Promise((resolve) => {
+        bubbleEl.style.opacity = "0";
+        bubbleEl.innerHTML = formatBubbleHTML(fullText);
+        requestAnimationFrame(() => {
+          bubbleEl.style.transition = "opacity 0.25s ease";
+          bubbleEl.style.opacity = "1";
+          scrollToBottom();
+          setTimeout(resolve, 260);
+        });
+      });
+    }
+
     return new Promise((resolve) => {
       const chars = Array.from(fullText);
       let i = 0;
@@ -326,7 +352,11 @@
   els.messageInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      els.composerForm.requestSubmit();
+      if (typeof els.composerForm.requestSubmit === "function") {
+        els.composerForm.requestSubmit();
+      } else {
+        els.composerForm.dispatchEvent(new Event("submit", { cancelable: true }));
+      }
     }
   });
 
@@ -401,21 +431,28 @@
     }
   });
 
+  const ERROR_MESSAGES = {
+    network: "Medhira couldn't reach the server. Check your connection and try again.",
+    timeout: "That took too long to respond. Please try again.",
+    rate_limited: "Medhira is getting a lot of requests right now. Please wait a moment and try again.",
+    missing_key: "Medhira's AI connection isn't configured yet. Please check back soon.",
+    invalid_key: "Medhira's AI connection is misconfigured. Please check the API key in Netlify settings.",
+    empty_messages: "Please enter a message before sending.",
+    upstream_error: "Medhira couldn't get a response from Claude right now. Please try again.",
+    invalid_upstream_response: "Medhira received an unexpected response. Please try again.",
+    invalid_response: "Medhira received an unexpected response. Please try again.",
+    server_error: "Something went wrong on Medhira's end. Please try again.",
+  };
+
   function friendlyErrorMessage(err) {
-    const msg = (err && err.message) || "";
-    if (msg.includes("Failed to fetch") || msg === "network") {
-      return "Medhira couldn't reach the server. Check your connection and try again.";
-    }
-    if (msg.includes("429")) {
-      return "Medhira is getting a lot of requests right now. Please wait a moment and try again.";
-    }
-    if (msg.includes("missing_key") || msg.includes("500")) {
-      return "Medhira's AI connection isn't configured yet. Please check back soon.";
-    }
-    return "Something went wrong while getting a response. Please try again.";
+    const code = (err && err.message) || "";
+    return ERROR_MESSAGES[code] || "Something went wrong while getting a response. Please try again.";
   }
 
   async function callChatFunction(messages, systemPrompt) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+
     let res;
     try {
       res = await fetch("/.netlify/functions/chat", {
@@ -425,20 +462,23 @@
           messages: messages.map((m) => ({ role: m.role, content: m.content })),
           system: systemPrompt,
         }),
+        signal: controller.signal,
       });
-    } catch {
-      throw new Error("network");
+    } catch (err) {
+      throw new Error(err && err.name === "AbortError" ? "timeout" : "network");
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     let data = null;
     try {
       data = await res.json();
     } catch {
-      throw new Error(`invalid_response_${res.status}`);
+      throw new Error("invalid_response");
     }
 
     if (!res.ok) {
-      throw new Error(data?.error || `${res.status}`);
+      throw new Error(data?.error || "server_error");
     }
     if (!data || typeof data.reply !== "string") {
       throw new Error("invalid_response");
@@ -448,7 +488,14 @@
 
   /* ---------- New chat ---------- */
   function startNewChat() {
-    currentConversationId = null;
+    // Drop any existing empty/untitled conversation so re-opening
+    // "New chat" repeatedly doesn't leave a trail of blank entries.
+    conversations = conversations.filter((c) => c.messages.length > 0);
+
+    const convo = createConversation(); // generates a fresh id, unshifts into conversations
+    currentConversationId = convo.id;
+    saveConversations();
+
     renderEmptyChat();
     renderHistory();
     closeSidebar();
@@ -466,13 +513,25 @@
 
   els.newChatBtn.addEventListener("click", requestNewChat);
   els.mobileNewChat.addEventListener("click", requestNewChat);
-  els.cancelNewChat.addEventListener("click", () => { els.confirmOverlay.hidden = true; });
-  els.confirmNewChat.addEventListener("click", () => {
-    els.confirmOverlay.hidden = true;
-    startNewChat();
-  });
+
+  // The confirmation dialog's buttons are handled via delegated
+  // data-action listeners (rather than only a direct per-button
+  // addEventListener) so this keeps working even if the dialog's
+  // markup is re-rendered or an id ever drifts out of sync.
   els.confirmOverlay.addEventListener("click", (e) => {
-    if (e.target === els.confirmOverlay) els.confirmOverlay.hidden = true;
+    if (e.target === els.confirmOverlay) {
+      els.confirmOverlay.hidden = true;
+      return;
+    }
+    const actionEl = e.target.closest("[data-action]");
+    if (!actionEl) return;
+
+    if (actionEl.dataset.action === "cancel-new-chat") {
+      els.confirmOverlay.hidden = true;
+    } else if (actionEl.dataset.action === "confirm-new-chat") {
+      els.confirmOverlay.hidden = true;
+      startNewChat();
+    }
   });
 
   /* ---------- Settings modal ---------- */
@@ -486,6 +545,7 @@
     });
     els.customInstructions.value = settings.customInstructions || "";
     els.settingsOverlay.hidden = false;
+    closeSidebar();
   }
   function closeSettingsModal() {
     els.settingsOverlay.hidden = true;
